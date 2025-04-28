@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, "lib/core.ts"),
+      entry: resolve(__dirname, "lib/index.ts"),
       name: "imagekit",
       fileName: "image-kit",
       formats: ["es", "cjs"],

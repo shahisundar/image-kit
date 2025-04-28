@@ -1,0 +1,27 @@
+{
+  "name": "image-kit",
+  "version": "0.0.0",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/image-kit.cjs",
+  "module": "./dist/image-kit.js",
+  "exports": {
+    ".": {
+      "import": "./dist/image-kit.js",
+      "require": "./dist/image-kit.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "~5.7.2",
+    "vite": "^6.3.1",
+    "vite-plugin-dts": "^4.5.3"
+  }
+}

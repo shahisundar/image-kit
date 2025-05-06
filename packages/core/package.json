@@ -1,6 +1,14 @@
 {
   "name": "@image-kit/core",
-  "version": "2.0.6",
+  "version": "2.0.7",
+    "description": "A lightweight and performant image processing wrapper for the browser.",
+   "author": {
+    "name": "Sundar Shahi Thakuri",
+    "url": "https://github.com/sundarshahi",
+    "email": "shahithakurisundar@gmail.com"
+  },
+  "keywords": ["image","image-kit","react","cloudinary","transform"],
+  "homepage": "https://github.com/sundarshahi/image-kit",
   "type": "module",
   "files": [
     "dist"

@@ -1,14 +1,18 @@
 export class ImageKit {
-  private src: string;
+  private source: string | Blob;
+  private sourceType: 'url' | 'blob';
   private deliveryType: string | null = null;
   private imageFormat: string | null = null;
   private imageQuality: string | null = null;
   private resizeOptions: ResizeOptions | null = null;
   private sharpeningLevel: number | null = null;
   private resizeAlgorithm: ResizeAlgorithm = "lanczos";
+  private rotationAngle: number = 0;
+  private cropShape: CropShape | null = null;
 
-  constructor(src: string) {
-    this.src = src;
+  constructor(source: string | Blob) {
+    this.source = source;
+    this.sourceType = typeof source === 'string' ? 'url' : 'blob';
   }
 
   setDeliveryType(type: string) {
@@ -50,6 +54,22 @@ export class ImageKit {
    */
   algorithm(algorithm: ResizeAlgorithm) {
     this.resizeAlgorithm = algorithm;
+    return this;
+  }
+
+  /**
+   * Rotate the image by specified degrees
+   */
+  rotate(degrees: number) {
+    this.rotationAngle = ((degrees % 360) + 360) % 360;
+    return this;
+  }
+
+  /**
+   * Set crop shape (for circular, rectangular crops)
+   */
+  cropAs(shape: CropShape) {
+    this.cropShape = shape;
     return this;
   }
 
@@ -300,6 +320,164 @@ export class ImageKit {
     }
   }
 
+  /**
+   * Apply crop shape to the canvas (circle, square, rectangle)
+   */
+private applyCropShape(
+  canvas: HTMLCanvasElement | OffscreenCanvas,
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+): { canvas: HTMLCanvasElement | OffscreenCanvas; ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D } {
+  if (!this.cropShape) return { canvas, ctx };
+
+  const width = canvas.width;
+  const height = canvas.height;
+  const gravity = this.resizeOptions?._gravity;
+
+  let cropWidth = width;
+  let cropHeight = height;
+
+  switch (this.cropShape.type) {
+    case "circle":
+    case "square":
+      cropWidth = cropHeight = Math.min(width, height);
+      break;
+    case "rectangle":
+    case "roundedRect":
+      cropWidth = this.cropShape.width || width;
+      cropHeight = this.cropShape.height || height;
+      break;
+  }
+
+  let offsetX = 0, offsetY = 0;
+
+  if (typeof gravity === "string") {
+    switch (gravity) {
+      case "top":
+        offsetX = (width - cropWidth) / 2;
+        offsetY = 0;
+        break;
+      case "bottom":
+        offsetX = (width - cropWidth) / 2;
+        offsetY = height - cropHeight;
+        break;
+      case "left":
+        offsetX = 0;
+        offsetY = (height - cropHeight) / 2;
+        break;
+      case "right":
+        offsetX = width - cropWidth;
+        offsetY = (height - cropHeight) / 2;
+        break;
+      case "top-left":
+        offsetX = 0;
+        offsetY = 0;
+        break;
+      case "top-right":
+        offsetX = width - cropWidth;
+        offsetY = 0;
+        break;
+      case "bottom-left":
+        offsetX = 0;
+        offsetY = height - cropHeight;
+        break;
+      case "bottom-right":
+        offsetX = width - cropWidth;
+        offsetY = height - cropHeight;
+        break;
+      case "center":
+      default:
+        offsetX = (width - cropWidth) / 2;
+        offsetY = (height - cropHeight) / 2;
+        break;
+    }
+  } else if (gravity && typeof gravity === "object" && gravity.x !== undefined && gravity.y !== undefined) {
+    offsetX = gravity.x;
+    offsetY = gravity.y;
+  }
+
+  const { canvas: croppedCanvas, ctx: croppedCtx } = this.createCanvas(cropWidth, cropHeight);
+
+  croppedCtx.save();
+  croppedCtx.beginPath();
+  if (this.cropShape.type === "circle") {
+    const radius = Math.min(cropWidth, cropHeight) / 2;
+    croppedCtx.arc(cropWidth / 2, cropHeight / 2, radius, 0, Math.PI * 2);
+  } else if (this.cropShape.type === "roundedRect") {
+    const radius = this.cropShape.radius || 10;
+    this.roundRect(croppedCtx, 0, 0, cropWidth, cropHeight, radius);
+  } else {
+    croppedCtx.rect(0, 0, cropWidth, cropHeight);
+  }
+  croppedCtx.closePath();
+  croppedCtx.clip();
+
+  // Draw image from offset
+  croppedCtx.drawImage(canvas, offsetX, offsetY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+  croppedCtx.restore();
+
+  return { canvas: croppedCanvas, ctx: croppedCtx };
+}
+
+
+
+
+  /**
+   * Helper method to draw rounded rectangles
+   */
+  private roundRect(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number
+  ) {
+    if (width < 2 * radius) radius = width / 2;
+    if (height < 2 * radius) radius = height / 2;
+
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + width, y, x + width, y + height, radius);
+    ctx.arcTo(x + width, y + height, x, y + height, radius);
+    ctx.arcTo(x, y + height, x, y, radius);
+    ctx.arcTo(x, y, x + width, y, radius);
+    ctx.closePath();
+  }
+
+  /**
+   * Apply rotation to the canvas
+   */
+  private applyRotation(
+    canvas: HTMLCanvasElement | OffscreenCanvas,
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+  ): {
+    canvas: HTMLCanvasElement | OffscreenCanvas;
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  } {
+    if (this.rotationAngle === 0) {
+      return { canvas, ctx };
+    }
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const radians = (this.rotationAngle * Math.PI) / 180;
+    const sin = Math.abs(Math.sin(radians));
+    const cos = Math.abs(Math.cos(radians));
+    const newWidth = Math.round(width * cos + height * sin);
+    const newHeight = Math.round(width * sin + height * cos);
+
+    const { canvas: rotatedCanvas, ctx: rotatedCtx } = this.createCanvas(newWidth, newHeight);
+
+    rotatedCtx.save();
+    rotatedCtx.translate(newWidth / 2, newHeight / 2);
+    rotatedCtx.rotate(radians);
+    rotatedCtx.drawImage(canvas, -width / 2, -height / 2);
+    rotatedCtx.restore();
+
+    return { canvas: rotatedCanvas, ctx: rotatedCtx };
+  }
+
   private transform(imgData: ImageBitmap | HTMLImageElement): {
     canvas: HTMLCanvasElement | OffscreenCanvas;
     ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
@@ -321,22 +499,87 @@ export class ImageKit {
       }
     }
 
-    const { canvas, ctx } = this.multiStepResize(imgData, targetWidth, targetHeight);
+    if (this.resizeOptions?.crop) {
+      switch (this.resizeOptions.crop) {
+        case "thumb":
+        case "thumbnail":
+
+          const thumbRatio = targetWidth / targetHeight;
+          const imageRatio = imgData.width / imgData.height;
+          
+          if (imageRatio > thumbRatio) {
+            targetWidth = Math.round(targetHeight * imageRatio);
+          } else {
+        
+            targetHeight = Math.round(targetWidth / imageRatio);
+          }
+          break;
+        
+        case "fill":
+          break;
+          
+        case "crop":
+          break;
+      }
+    }
+
+    let { canvas, ctx } = this.multiStepResize(imgData, targetWidth, targetHeight);
+
+    if (this.rotationAngle !== 0) {
+      const rotated = this.applyRotation(canvas, ctx);
+      canvas = rotated.canvas;
+      ctx = rotated.ctx;
+    }
+
+    if (this.cropShape) {
+        const result = this.applyCropShape(canvas, ctx);
+        canvas = result.canvas;
+        ctx = result.ctx;
+    }
 
     if (this.sharpeningLevel && this.sharpeningLevel > 0) {
-      this.applySharpening(ctx, targetWidth, targetHeight, this.sharpeningLevel);
+      this.applySharpening(ctx, canvas.width, canvas.height, this.sharpeningLevel);
     }
 
     return { canvas, ctx };
   }
 
   /**
-   * Load image appropriately based on environment (worker vs main thread)
+   * Load image appropriately based on environment and source type (URL or Blob)
    */
   private async load(): Promise<ImageBitmap | HTMLImageElement> {
+    if (this.sourceType === 'blob') {
+      const blob = this.source as Blob;
+      
+      if (typeof createImageBitmap !== "undefined") {
+        try {
+          return await createImageBitmap(blob);
+        } catch (error) {
+          throw new Error(`Failed to create ImageBitmap from blob: ${error}`);
+        }
+      } else if (typeof URL !== "undefined" && typeof Image !== "undefined") {
+        const url = URL.createObjectURL(blob);
+        try {
+          const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error("Failed to load image from blob"));
+            img.src = url;
+          });
+          return img;
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      } else {
+        throw new Error("Neither createImageBitmap nor URL.createObjectURL is available");
+      }
+    }
+    
+    const url = this.source as string;
+    
     if (typeof createImageBitmap !== "undefined" && this.deliveryType === "fetch") {
       try {
-        const response = await fetch(this.src, { mode: "cors" });
+        const response = await fetch(url, { mode: "cors" });
         if (!response.ok) {
           throw new Error(`Failed to fetch image: ${response.statusText}`);
         }
@@ -349,10 +592,10 @@ export class ImageKit {
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.src = this.src;
+        img.src = url;
 
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`Failed to load image: ${this.src}`));
+        img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
       });
     } else {
       throw new Error("Neither createImageBitmap nor Image constructor is available");
@@ -448,17 +691,25 @@ export interface ResizeOptions {
   _width?: number | null;
   _height?: number | null;
   _aspectRatio?: string | null;
+  crop?: string;
+  _gravity?: string | { x: number; y: number } | null;
 }
 
 export type ResizeAlgorithm = "standard" | "lanczos" | "multistep";
 
+export type CropShape = 
+  | { type: "circle" }
+  | { type: "square" }
+  | { type: "rectangle"; width?: number; height?: number }
+  | { type: "roundedRect"; width?: number; height?: number; radius?: number };
+
 /**
  * Factory function to create an ImageKit instance
- * @param src - Source image URL
+ * @param source - Source image URL or Blob
  * @returns New ImageKit instance
  */
-export function image(src: string) {
-  return new ImageKit(src);
+export function image(source: string | Blob) {
+  return new ImageKit(source);
 }
 
 /**
@@ -474,16 +725,23 @@ export function image(src: string) {
  * };
  */
 export async function processImageInWorker(
-  imageUrl: string,
+  imageSource: string | Blob,
   options: {
     format?: string;
     quality?: number;
     resize?: ResizeOptions;
     sharpen?: number;
     algorithm?: ResizeAlgorithm;
+    rotate?: number;
+    cropShape?: CropShape;
+    signal?: AbortSignal;
   }
 ): Promise<ArrayBuffer> {
-  let processor = image(imageUrl).setDeliveryType("fetch");
+  let processor = image(imageSource);
+  
+  if (typeof imageSource === 'string') {
+    processor = processor.setDeliveryType("fetch");
+  }
 
   if (options.format) {
     processor = processor.format(options.format);
@@ -505,5 +763,13 @@ export async function processImageInWorker(
     processor = processor.algorithm(options.algorithm);
   }
 
-  return processor.toArrayBuffer();
+  if (options.rotate !== undefined) {
+    processor = processor.rotate(options.rotate);
+  }
+
+  if (options.cropShape) {
+    processor = processor.cropAs(options.cropShape);
+  }
+  
+  return processor.toArrayBuffer(options.signal ? { signal: options.signal } : undefined);
 }

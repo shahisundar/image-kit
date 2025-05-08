@@ -1,6 +1,6 @@
 {
   "name": "@image-kit/core",
-  "version": "2.0.7",
+  "version": "2.0.9",
   "description": "A lightweight and performant image processing wrapper for the browser.",
   "author": {
     "name": "Sundar Shahi Thakuri",
@@ -19,11 +19,11 @@
   "files": [
     "dist"
   ],
-  "types": "./dist/index.d.ts",
   "main": "./dist/image-kit.cjs",
   "module": "./dist/image-kit.js",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/image-kit.js",
       "require": "./dist/image-kit.cjs"
     }

@@ -18,7 +18,6 @@ export default defineConfig({
     dts({
       entryRoot: "lib",
       exclude: ["src"],
-      insertTypesEntry: true,
     }),
   ],
 });

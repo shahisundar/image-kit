@@ -1,2 +1,2 @@
 export { image } from "./core";
-export { thumbnail, fill, crop } from "./resize";
+export { thumbnail, fill, crop, circle, square, rectangle, roundedRect } from "./resize";

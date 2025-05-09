@@ -1,22 +1,24 @@
-<!-- web/src/components/ImageCropper.svelte -->
-<script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+<script context="module" lang="ts">
+  export type Shape =
+    | { type: 'circle' }
+    | { type: 'square' }
+    | { type: 'rectangle'; width?: number; height?: number }
+    | { type: 'roundedRect'; width?: number; height?: number; radius?: number };
+</script>
 
-  
-  export let shape: any;
-  
-  const dispatch = createEventDispatcher<{
-    update: any;
-  }>();
-  
-  let shapeType = shape.type;
-  let width = 'type' in shape && 'width' in shape ? shape.width || 0 : 0;
-  let height = 'type' in shape && 'height' in shape ? shape.height || 0 : 0;
-  let radius = shape.type === 'roundedRect' ? shape.radius || 10 : 10;
-  
+<script lang="ts">
+
+  export let shape: Shape;
+  export let onUpdate: (shape: Shape) => void = () => {};
+
+  let shapeType: Shape['type'] = shape.type;
+  let width = 'width' in shape ? shape.width ?? 0 : 0;
+  let height = 'height' in shape ? shape.height ?? 0 : 0;
+  let radius = shape.type === 'roundedRect' ? shape.radius ?? 10 : 10;
+
   function updateShape() {
-    let newShape: any;
-    
+    let newShape: Shape;
+
     switch (shapeType) {
       case 'circle':
         newShape = { type: 'circle' };
@@ -25,27 +27,19 @@
         newShape = { type: 'square' };
         break;
       case 'rectangle':
-        newShape = { 
-          type: 'rectangle',
-          width: width || undefined,
-          height: height || undefined
-        };
+        newShape = { type: 'rectangle', width, height };
         break;
       case 'roundedRect':
-        newShape = { 
-          type: 'roundedRect',
-          width: width || undefined,
-          height: height || undefined,
-          radius: radius
-        };
+        newShape = { type: 'roundedRect', width, height, radius };
         break;
       default:
         newShape = { type: 'rectangle' };
     }
-    
-    dispatch('update', newShape);
+
+    onUpdate(newShape);
   }
 </script>
+
 
 <div class="cropper-container">
   <h3>Crop Shape</h3>

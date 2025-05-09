@@ -1,6 +1,6 @@
 export class ImageKit {
   private source: string | Blob;
-  private sourceType: 'url' | 'blob';
+  private sourceType: "url" | "blob";
   private deliveryType: string | null = null;
   private imageFormat: string | null = null;
   private imageQuality: string | null = null;
@@ -12,7 +12,7 @@ export class ImageKit {
 
   constructor(source: string | Blob) {
     this.source = source;
-    this.sourceType = typeof source === 'string' ? 'url' : 'blob';
+    this.sourceType = typeof source === "string" ? "url" : "blob";
   }
 
   setDeliveryType(type: string) {
@@ -32,8 +32,12 @@ export class ImageKit {
 
   resize(resizeOptions: ResizeOptions) {
     if (
-      (resizeOptions._width && !resizeOptions._height && !resizeOptions._aspectRatio) ||
-      (!resizeOptions._width && resizeOptions._height && !resizeOptions._aspectRatio)
+      (resizeOptions._width &&
+        !resizeOptions._height &&
+        !resizeOptions._aspectRatio) ||
+      (!resizeOptions._width &&
+        resizeOptions._height &&
+        !resizeOptions._aspectRatio)
     ) {
       resizeOptions._aspectRatio = "original";
     }
@@ -84,36 +88,27 @@ export class ImageKit {
   /**
    * Creates either a Canvas or OffscreenCanvas based on environment
    */
-  private createCanvas(
-    width: number,
-    height: number
-  ): {
-    canvas: HTMLCanvasElement | OffscreenCanvas;
-    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-  } {
-    if (typeof OffscreenCanvas !== "undefined") {
-      const canvas = new OffscreenCanvas(width, height);
-      const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
+  private createCanvas(width: number, height: number) {
+    const isOffscreen = typeof OffscreenCanvas !== "undefined";
+    const isDOM = typeof document !== "undefined";
 
-      if (!ctx) {
-        throw new Error("Failed to get OffscreenCanvas context");
-      }
+    if (!isOffscreen && !isDOM) {
+      throw new Error("Canvas is not available in this environment");
+    }
 
-      return { canvas, ctx };
-    } else if (typeof document !== "undefined") {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
+    const canvas = isOffscreen
+      ? new OffscreenCanvas(width, height)
+      : document.createElement("canvas");
 
-      if (!ctx) {
-        throw new Error("Canvas not supported");
-      }
-
+    if (!isOffscreen) {
       canvas.width = width;
       canvas.height = height;
-      return { canvas, ctx };
-    } else {
-      throw new Error("Neither OffscreenCanvas nor DOM Canvas is available in this environment");
     }
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get canvas context");
+
+    return { canvas, ctx };
   }
 
   /**
@@ -166,7 +161,10 @@ export class ImageKit {
     const { ctx: tempCtx } = this.createCanvas(source.width, source.height);
     tempCtx.drawImage(source, 0, 0);
 
-    const { canvas: destCanvas, ctx: destCtx } = this.createCanvas(targetWidth, targetHeight);
+    const { canvas: destCanvas, ctx: destCtx } = this.createCanvas(
+      targetWidth,
+      targetHeight
+    );
 
     let sourceData: ImageData;
     if ("getImageData" in tempCtx) {
@@ -187,7 +185,10 @@ export class ImageKit {
       if (x === 0) return 1;
       if (x >= lanczosRadius) return 0;
       const xpi = x * Math.PI;
-      return (lanczosRadius * Math.sin(xpi) * Math.sin(xpi / lanczosRadius)) / (xpi * xpi);
+      return (
+        (lanczosRadius * Math.sin(xpi) * Math.sin(xpi / lanczosRadius)) /
+        (xpi * xpi)
+      );
     };
 
     const scaleX = source.width / targetWidth;
@@ -199,9 +200,15 @@ export class ImageKit {
         const srcY = y * scaleY;
 
         const startX = Math.max(0, Math.floor(srcX - lanczosRadius));
-        const endX = Math.min(source.width - 1, Math.ceil(srcX + lanczosRadius));
+        const endX = Math.min(
+          source.width - 1,
+          Math.ceil(srcX + lanczosRadius)
+        );
         const startY = Math.max(0, Math.floor(srcY - lanczosRadius));
-        const endY = Math.min(source.height - 1, Math.ceil(srcY + lanczosRadius));
+        const endY = Math.min(
+          source.height - 1,
+          Math.ceil(srcY + lanczosRadius)
+        );
 
         let r = 0,
           g = 0,
@@ -265,7 +272,10 @@ export class ImageKit {
     const sourceWidth = imgData.width;
     const sourceHeight = imgData.height;
 
-    const scaleFactor = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+    const scaleFactor = Math.min(
+      targetWidth / sourceWidth,
+      targetHeight / sourceHeight
+    );
 
     if (scaleFactor >= 0.5 || this.resizeAlgorithm === "lanczos") {
       if (this.resizeAlgorithm === "lanczos") {
@@ -283,7 +293,9 @@ export class ImageKit {
       const numSteps = Math.ceil(Math.log2(1 / scaleFactor));
 
       let currentCanvas: HTMLCanvasElement | OffscreenCanvas;
-      let currentCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+      let currentCtx:
+        | CanvasRenderingContext2D
+        | OffscreenCanvasRenderingContext2D;
       let currentWidth = sourceWidth;
       let currentHeight = sourceHeight;
 
@@ -301,7 +313,10 @@ export class ImageKit {
           ? targetHeight
           : Math.max(targetHeight, Math.round(currentHeight * 0.7));
 
-        const { canvas: stepCanvas, ctx: stepCtx } = this.createCanvas(stepWidth, stepHeight);
+        const { canvas: stepCanvas, ctx: stepCtx } = this.createCanvas(
+          stepWidth,
+          stepHeight
+        );
 
         if ("imageSmoothingEnabled" in stepCtx) {
           stepCtx.imageSmoothingEnabled = true;
@@ -323,103 +338,122 @@ export class ImageKit {
   /**
    * Apply crop shape to the canvas (circle, square, rectangle)
    */
-private applyCropShape(
-  canvas: HTMLCanvasElement | OffscreenCanvas,
-  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
-): { canvas: HTMLCanvasElement | OffscreenCanvas; ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D } {
-  if (!this.cropShape) return { canvas, ctx };
+  private applyCropShape(
+    canvas: HTMLCanvasElement | OffscreenCanvas,
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+  ): {
+    canvas: HTMLCanvasElement | OffscreenCanvas;
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  } {
+    if (!this.cropShape) return { canvas, ctx };
 
-  const width = canvas.width;
-  const height = canvas.height;
-  const gravity = this.resizeOptions?._gravity;
+    const width = canvas.width;
+    const height = canvas.height;
+    const gravity = this.resizeOptions?._gravity;
 
-  let cropWidth = width;
-  let cropHeight = height;
+    let cropWidth = width;
+    let cropHeight = height;
 
-  switch (this.cropShape.type) {
-    case "circle":
-    case "square":
-      cropWidth = cropHeight = Math.min(width, height);
-      break;
-    case "rectangle":
-    case "roundedRect":
-      cropWidth = this.cropShape.width || width;
-      cropHeight = this.cropShape.height || height;
-      break;
-  }
-
-  let offsetX = 0, offsetY = 0;
-
-  if (typeof gravity === "string") {
-    switch (gravity) {
-      case "top":
-        offsetX = (width - cropWidth) / 2;
-        offsetY = 0;
+    switch (this.cropShape.type) {
+      case "circle":
+      case "square":
+        cropWidth = cropHeight = Math.min(width, height);
         break;
-      case "bottom":
-        offsetX = (width - cropWidth) / 2;
-        offsetY = height - cropHeight;
-        break;
-      case "left":
-        offsetX = 0;
-        offsetY = (height - cropHeight) / 2;
-        break;
-      case "right":
-        offsetX = width - cropWidth;
-        offsetY = (height - cropHeight) / 2;
-        break;
-      case "top-left":
-        offsetX = 0;
-        offsetY = 0;
-        break;
-      case "top-right":
-        offsetX = width - cropWidth;
-        offsetY = 0;
-        break;
-      case "bottom-left":
-        offsetX = 0;
-        offsetY = height - cropHeight;
-        break;
-      case "bottom-right":
-        offsetX = width - cropWidth;
-        offsetY = height - cropHeight;
-        break;
-      case "center":
-      default:
-        offsetX = (width - cropWidth) / 2;
-        offsetY = (height - cropHeight) / 2;
+      case "rectangle":
+      case "roundedRect":
+        cropWidth = this.cropShape.width || width;
+        cropHeight = this.cropShape.height || height;
         break;
     }
-  } else if (gravity && typeof gravity === "object" && gravity.x !== undefined && gravity.y !== undefined) {
-    offsetX = gravity.x;
-    offsetY = gravity.y;
+
+    let offsetX = 0,
+      offsetY = 0;
+
+    if (typeof gravity === "string") {
+      switch (gravity) {
+        case "top":
+          offsetX = (width - cropWidth) / 2;
+          offsetY = 0;
+          break;
+        case "bottom":
+          offsetX = (width - cropWidth) / 2;
+          offsetY = height - cropHeight;
+          break;
+        case "left":
+          offsetX = 0;
+          offsetY = (height - cropHeight) / 2;
+          break;
+        case "right":
+          offsetX = width - cropWidth;
+          offsetY = (height - cropHeight) / 2;
+          break;
+        case "top-left":
+          offsetX = 0;
+          offsetY = 0;
+          break;
+        case "top-right":
+          offsetX = width - cropWidth;
+          offsetY = 0;
+          break;
+        case "bottom-left":
+          offsetX = 0;
+          offsetY = height - cropHeight;
+          break;
+        case "bottom-right":
+          offsetX = width - cropWidth;
+          offsetY = height - cropHeight;
+          break;
+        case "center":
+        default:
+          offsetX = (width - cropWidth) / 2;
+          offsetY = (height - cropHeight) / 2;
+          break;
+      }
+    } else if (
+      gravity &&
+      typeof gravity === "object" &&
+      gravity.x !== undefined &&
+      gravity.y !== undefined
+    ) {
+      offsetX = gravity.x;
+      offsetY = gravity.y;
+    }
+
+    const { canvas: croppedCanvas, ctx: croppedCtx } = this.createCanvas(
+      cropWidth,
+      cropHeight
+    );
+
+    croppedCtx.save();
+    croppedCtx.beginPath();
+    if (this.cropShape.type === "circle") {
+      const radius = Math.min(cropWidth, cropHeight) / 2;
+      croppedCtx.arc(cropWidth / 2, cropHeight / 2, radius, 0, Math.PI * 2);
+    } else if (this.cropShape.type === "roundedRect") {
+      const radius = this.cropShape.radius || 10;
+      this.roundRect(croppedCtx, 0, 0, cropWidth, cropHeight, radius);
+    } else {
+      croppedCtx.rect(0, 0, cropWidth, cropHeight);
+    }
+    croppedCtx.closePath();
+    croppedCtx.clip();
+
+    // Draw image from offset
+    croppedCtx.drawImage(
+      canvas,
+      offsetX,
+      offsetY,
+      cropWidth,
+      cropHeight,
+      0,
+      0,
+      cropWidth,
+      cropHeight
+    );
+    croppedCtx.restore();
+
+    return { canvas: croppedCanvas, ctx: croppedCtx };
   }
-
-  const { canvas: croppedCanvas, ctx: croppedCtx } = this.createCanvas(cropWidth, cropHeight);
-
-  croppedCtx.save();
-  croppedCtx.beginPath();
-  if (this.cropShape.type === "circle") {
-    const radius = Math.min(cropWidth, cropHeight) / 2;
-    croppedCtx.arc(cropWidth / 2, cropHeight / 2, radius, 0, Math.PI * 2);
-  } else if (this.cropShape.type === "roundedRect") {
-    const radius = this.cropShape.radius || 10;
-    this.roundRect(croppedCtx, 0, 0, cropWidth, cropHeight, radius);
-  } else {
-    croppedCtx.rect(0, 0, cropWidth, cropHeight);
-  }
-  croppedCtx.closePath();
-  croppedCtx.clip();
-
-  // Draw image from offset
-  croppedCtx.drawImage(canvas, offsetX, offsetY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-  croppedCtx.restore();
-
-  return { canvas: croppedCanvas, ctx: croppedCtx };
-}
-
-
-
 
   /**
    * Helper method to draw rounded rectangles
@@ -467,7 +501,10 @@ private applyCropShape(
     const newWidth = Math.round(width * cos + height * sin);
     const newHeight = Math.round(width * sin + height * cos);
 
-    const { canvas: rotatedCanvas, ctx: rotatedCtx } = this.createCanvas(newWidth, newHeight);
+    const { canvas: rotatedCanvas, ctx: rotatedCtx } = this.createCanvas(
+      newWidth,
+      newHeight
+    );
 
     rotatedCtx.save();
     rotatedCtx.translate(newWidth / 2, newHeight / 2);
@@ -495,7 +532,10 @@ private applyCropShape(
           targetHeight = Math.round(targetWidth / originalRatio);
         }
       } else {
-        targetWidth = this.calculateWidth(targetHeight, this.resizeOptions._aspectRatio);
+        targetWidth = this.calculateWidth(
+          targetHeight,
+          this.resizeOptions._aspectRatio
+        );
       }
     }
 
@@ -503,27 +543,29 @@ private applyCropShape(
       switch (this.resizeOptions.crop) {
         case "thumb":
         case "thumbnail":
-
           const thumbRatio = targetWidth / targetHeight;
           const imageRatio = imgData.width / imgData.height;
-          
+
           if (imageRatio > thumbRatio) {
             targetWidth = Math.round(targetHeight * imageRatio);
           } else {
-        
             targetHeight = Math.round(targetWidth / imageRatio);
           }
           break;
-        
+
         case "fill":
           break;
-          
+
         case "crop":
           break;
       }
     }
 
-    let { canvas, ctx } = this.multiStepResize(imgData, targetWidth, targetHeight);
+    let { canvas, ctx } = this.multiStepResize(
+      imgData,
+      targetWidth,
+      targetHeight
+    );
 
     if (this.rotationAngle !== 0) {
       const rotated = this.applyRotation(canvas, ctx);
@@ -532,13 +574,18 @@ private applyCropShape(
     }
 
     if (this.cropShape) {
-        const result = this.applyCropShape(canvas, ctx);
-        canvas = result.canvas;
-        ctx = result.ctx;
+      const result = this.applyCropShape(canvas, ctx);
+      canvas = result.canvas;
+      ctx = result.ctx;
     }
 
     if (this.sharpeningLevel && this.sharpeningLevel > 0) {
-      this.applySharpening(ctx, canvas.width, canvas.height, this.sharpeningLevel);
+      this.applySharpening(
+        ctx,
+        canvas.width,
+        canvas.height,
+        this.sharpeningLevel
+      );
     }
 
     return { canvas, ctx };
@@ -548,9 +595,9 @@ private applyCropShape(
    * Load image appropriately based on environment and source type (URL or Blob)
    */
   private async load(): Promise<ImageBitmap | HTMLImageElement> {
-    if (this.sourceType === 'blob') {
+    if (this.sourceType === "blob") {
       const blob = this.source as Blob;
-      
+
       if (typeof createImageBitmap !== "undefined") {
         try {
           return await createImageBitmap(blob);
@@ -563,7 +610,8 @@ private applyCropShape(
           const img = await new Promise<HTMLImageElement>((resolve, reject) => {
             const img = new Image();
             img.onload = () => resolve(img);
-            img.onerror = () => reject(new Error("Failed to load image from blob"));
+            img.onerror = () =>
+              reject(new Error("Failed to load image from blob"));
             img.src = url;
           });
           return img;
@@ -571,13 +619,18 @@ private applyCropShape(
           URL.revokeObjectURL(url);
         }
       } else {
-        throw new Error("Neither createImageBitmap nor URL.createObjectURL is available");
+        throw new Error(
+          "Neither createImageBitmap nor URL.createObjectURL is available"
+        );
       }
     }
-    
+
     const url = this.source as string;
-    
-    if (typeof createImageBitmap !== "undefined" && this.deliveryType === "fetch") {
+
+    if (
+      typeof createImageBitmap !== "undefined" &&
+      this.deliveryType === "fetch"
+    ) {
       try {
         const response = await fetch(url, { mode: "cors" });
         if (!response.ok) {
@@ -598,7 +651,9 @@ private applyCropShape(
         img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
       });
     } else {
-      throw new Error("Neither createImageBitmap nor Image constructor is available");
+      throw new Error(
+        "Neither createImageBitmap nor Image constructor is available"
+      );
     }
   }
 
@@ -640,7 +695,10 @@ private applyCropShape(
       });
 
       // Race between the abort signal and the actual blob conversion
-      return Promise.race([this.canvasToBlob(canvas, format, quality), abortPromise]);
+      return Promise.race([
+        this.canvasToBlob(canvas, format, quality),
+        abortPromise,
+      ]);
     }
 
     return this.canvasToBlob(canvas, format, quality);
@@ -681,7 +739,9 @@ private applyCropShape(
   /**
    * Convert to ArrayBuffer - useful for worker to main thread transfer
    */
-  async toArrayBuffer(options?: { signal?: AbortSignal }): Promise<ArrayBuffer> {
+  async toArrayBuffer(options?: {
+    signal?: AbortSignal;
+  }): Promise<ArrayBuffer> {
     const blob = await this.toBlob(options);
     return await blob.arrayBuffer();
   }
@@ -697,7 +757,7 @@ export interface ResizeOptions {
 
 export type ResizeAlgorithm = "standard" | "lanczos" | "multistep";
 
-export type CropShape = 
+export type CropShape =
   | { type: "circle" }
   | { type: "square" }
   | { type: "rectangle"; width?: number; height?: number }
@@ -738,8 +798,8 @@ export async function processImageInWorker(
   }
 ): Promise<ArrayBuffer> {
   let processor = image(imageSource);
-  
-  if (typeof imageSource === 'string') {
+
+  if (typeof imageSource === "string") {
     processor = processor.setDeliveryType("fetch");
   }
 
@@ -770,6 +830,8 @@ export async function processImageInWorker(
   if (options.cropShape) {
     processor = processor.cropAs(options.cropShape);
   }
-  
-  return processor.toArrayBuffer(options.signal ? { signal: options.signal } : undefined);
+
+  return processor.toArrayBuffer(
+    options.signal ? { signal: options.signal } : undefined
+  );
 }

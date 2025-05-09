@@ -14,7 +14,7 @@
     "cloudinary",
     "transform"
   ],
-  "homepage": "https://github.com/sundarshahi/image-kit",
+  "homepage": "https://image-kit-web.vercel.app",
   "type": "module",
   "files": [
     "dist"

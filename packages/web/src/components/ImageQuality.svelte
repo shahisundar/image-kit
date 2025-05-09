@@ -1,39 +1,42 @@
-<!-- web/src/components/ImageQuality.svelte -->
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-  
-  export let quality: number;
-  export let format: string;
-  export let sharpeningLevel: number;
-  export let algorithm: any;
-  
-  const dispatch = createEventDispatcher<{
-    update: {
+  let {
+    quality,
+    format,
+    sharpeningLevel,
+    algorithm,
+    onUpdate
+  }: {
+    quality: number;
+    format: string;
+    sharpeningLevel: number;
+    algorithm: string;
+    onUpdate?: (params: {
       quality: number;
       format: string;
       sharpeningLevel: number;
-      algorithm: any;
-    };
-  }>();
-  
+      algorithm: string;
+    }) => void;
+  } = $props();
+
   const formatOptions = [
     { value: 'image/jpeg', label: 'JPEG' },
     { value: 'image/png', label: 'PNG' },
     { value: 'image/webp', label: 'WebP' },
     { value: 'image/avif', label: 'AVIF' }
   ];
-  
-  const algorithmOptions: any[] = [
+
+  const algorithmOptions = [
     'standard',
+    'multistep',
     'lanczos2',
     'lanczos3',
     'mitchell',
     'nearest',
     'cubic'
   ];
-  
+
   function updateOptions() {
-    dispatch('update', {
+    onUpdate?.({
       quality,
       format,
       sharpeningLevel,
@@ -44,25 +47,24 @@
 
 <div class="quality-container">
   <h3>Image Quality & Format</h3>
-  
   <div class="form-group">
     <label for="format">Output Format</label>
-    <select id="format" bind:value={format} on:change={updateOptions}>
+    <select id="format" bind:value={format} onchange={updateOptions}>
       {#each formatOptions as formatOption}
         <option value={formatOption.value}>{formatOption.label}</option>
       {/each}
     </select>
   </div>
-  
+
   <div class="form-group">
     <label for="quality">Quality ({quality}%)</label>
-    <input 
-      type="range" 
-      id="quality" 
-      bind:value={quality} 
-      on:input={updateOptions} 
-      min="1" 
-      max="100" 
+    <input
+      type="range"
+      id="quality"
+      bind:value={quality}
+      oninput={updateOptions}
+      min="1"
+      max="100"
       step="1"
     />
     <div class="range-labels">
@@ -70,15 +72,15 @@
       <span>High</span>
     </div>
   </div>
-  
+
   <div class="form-group">
     <label for="algorithm">Resize Algorithm</label>
-    <select id="algorithm" bind:value={algorithm} on:change={updateOptions}>
+    <select id="algorithm" bind:value={algorithm} onchange={updateOptions}>
       {#each algorithmOptions as algo}
         <option value={algo}>{algo}</option>
       {/each}
     </select>
-    
+
     <div class="option-description">
       {#if algorithm === 'standard'}
         <p>Default algorithm with good balance of quality and speed</p>
@@ -95,16 +97,16 @@
       {/if}
     </div>
   </div>
-  
+
   <div class="form-group">
     <label for="sharpening">Sharpening ({sharpeningLevel})</label>
-    <input 
-      type="range" 
-      id="sharpening" 
-      bind:value={sharpeningLevel} 
-      on:input={updateOptions} 
-      min="0" 
-      max="5" 
+    <input
+      type="range"
+      id="sharpening"
+      bind:value={sharpeningLevel}
+      oninput={updateOptions}
+      min="0"
+      max="5"
       step="0.1"
     />
     <div class="range-labels">
@@ -118,31 +120,32 @@
   .quality-container {
     padding: 10px;
   }
-  
+
   .form-group {
     margin-bottom: 15px;
   }
-  
+
   label {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
   }
-  
-  input, select {
+
+  input,
+  select {
     width: 100%;
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
   }
-  
+
   .range-labels {
     display: flex;
     justify-content: space-between;
     font-size: 0.8em;
     color: #666;
   }
-  
+
   .option-description {
     font-size: 0.9em;
     color: #666;
